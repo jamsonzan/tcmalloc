@@ -5,5 +5,7 @@
 #include "tcmalloc.h"
 
 int main() {
-    tcmalloc::free(tcmalloc::malloc(1));
+    tcmalloc::free(tcmalloc::malloc(60));
+    tcmalloc::free(tcmalloc::malloc(1024));
+    tcmalloc::free(tcmalloc::malloc(1024 * 1024 * 1024));
 }

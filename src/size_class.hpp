@@ -191,7 +191,8 @@ namespace tcmalloc {
         return SizeClasses[cl].num_to_move;
     }
 
-    // 0bytes时当成8bytes处理
+    // 0bytes时当成8bytes处理，
+    // 不要使用0号class，tcmalloc.cpp要用0来区分大小对象
     static const int IndexToClass[kMaxSizeToClass] = {
             // <class> <index>, <bytes>, <class>
             1,    //    0    0    1

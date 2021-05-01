@@ -13,7 +13,7 @@
 #include "thread_cache.hpp"
 
 /*
-cpp hello world application.
+tcmalloc unit test.
 */
 
 void TestFixAllocator() {
@@ -227,7 +227,42 @@ void TestCentralFreeList() {
 
 void TestThreadCache() {
     printf("===================== TestThreadCache BEGIN =====================\n");
-    printf("===================== TestThreadCache BEGIN =====================\n");
+    std::vector<std::thread> threads;
+    for (int i = 0; i < 10; ++i) {
+        threads.emplace_back([](){
+            struct People {
+                People(int age) : age_(age) {}
+                int     age_;
+                int     padding;
+            };
+            int cl;
+            assert(sizeof(People) == 8);
+            assert(tcmalloc::SizeToClass(8, &cl) && cl == 1 && tcmalloc::ClassSize(cl) == 8);
+
+            tcmalloc::ThreadCache* curr = tcmalloc::ThreadCache::Current();
+            assert(curr->GetTotalAlloc() == 0 && curr->GetTotalFree() == 0);
+            auto p1 = (People*)curr->Alloc(8, 1);
+            assert(p1 != nullptr);
+            assert(curr->GetTotalAlloc() == 8 && curr->GetTotalFree() == 0);
+            p1->age_ = 18; p1->padding = 1;
+            curr->Free(p1, 1);
+
+            // wait for other threads
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            assert(curr->GetTotalAlloc() == 8 && curr->GetTotalFree() == 8);
+
+            auto void0 = curr->Alloc(16, 2);
+            auto void1 = curr->Alloc(16, 2);
+            assert(curr->GetTotalAlloc() == 40 && curr->GetTotalFree() == 8);
+            curr->Free(void0, 2);
+            curr->Free(void1, 2);
+            assert(curr->GetTotalAlloc() == 40 && curr->GetTotalFree() == 40);
+        });
+    }
+    for (auto it = threads.begin(); it != threads.end(); ++it) {
+        it->join();
+    }
+    printf("===================== TestThreadCache Finish =====================\n");
 }
 
 int main()
@@ -241,135 +276,3 @@ int main()
     TestThreadCache();
 }
 
-
-/*
- * test utils
- */
-void pv(int sem_id, int op)
-{
-    struct sembuf sem_b;
-    sem_b.sem_num = 0;
-    sem_b.sem_op = op;
-    sem_b.sem_flg = SEM_UNDO;
-    semop(sem_id, &sem_b, 1);
-}
-
-#include <pthread.h>
-#include <stdio.h>
-
-pthread_key_t key;
-pthread_t thid1;
-pthread_t thid2;
-
-void* thread2(void* arg)
-{
-    printf("thread:%lu is running\n", pthread_self());
-
-    int key_va = 3 ;
-
-    pthread_setspecific(key, (void*)&key_va);
-    printf("thread:%lu return %d\n", pthread_self(), *(int*)pthread_getspecific(key));
-    return nullptr;
-}
-
-
-void* thread1(void* arg)
-{
-    printf("thread:%lu is running\n", pthread_self());
-
-    int key_va = 5;
-
-    pthread_setspecific(key, (void*)&key_va);
-
-    pthread_create(&thid2, NULL, thread2, NULL);
-
-    printf("thread:%lu return %d\n", pthread_self(), *(int*)pthread_getspecific(key));
-    return nullptr;
-}
-
-void destruct(void *ptr) {
-    printf("destruct ptr %ud run...\n", ptr);
-}
-
-int main6()
-{
-    printf("main thread:%lu is running\n", pthread_self());
-
-    pthread_key_create(&key, destruct);
-
-    pthread_create(&thid1, NULL, thread1, NULL);
-
-    pthread_join(thid1, NULL);
-    pthread_join(thid2, NULL);
-
-    int key_va = 1;
-    pthread_setspecific(key, (void*)(&key_va));
-
-    printf("thread:%lu return %d\n", pthread_self(), *(int*)pthread_getspecific(key));
-
-    //pthread_key_delete(key);
-
-    printf("main thread exit\n");
-    return 0;
-}
-
-int main5()
-{
-    int lock = semget(IPC_PRIVATE, 1, 0666);
-    semctl(lock, 0, SETVAL, 1);
-
-    int shm_id = shmget(IPC_PRIVATE, 2048, 0666);
-    if (shm_id < 0)
-    {
-        perror("shmget");
-        return 1;
-    }
-
-    //int shm_id = 6029343;
-
-    for (int i = 0; i < 3; ++i) {
-        pid_t pid = fork();
-        if (pid < 0)
-        {
-            return 1;
-        } else if (pid == 0)
-        {
-            printf("child begin\n");
-            int* shmm = (int*)shmat(shm_id, 0, 0);
-
-            printf("shmm is %d\n", shmm);
-
-            if (shmm < (int*)0)
-            {
-                printf("shmat: %s\n", strerror(errno));
-                exit(1);
-            } else {
-                printf("shmm > 0");
-            }
-
-            pv(lock, -1);
-            printf("child alone begin, shmm %d\n", *shmm);
-            (*shmm)++;
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-            (*shmm)++;
-            printf("child alone end, shmm %d\n", *shmm);
-            pv(lock, 1);
-
-            shmdt((void*)shmm);
-            exit(0);
-        }
-    }
-
-
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-    if (shmctl(shm_id, IPC_RMID, 0) < 0)
-    {
-        perror("shmctl");
-    } else {
-        printf("rm success\n");
-    }
-
-    return 0;
-}
-
-// g++ example/test/main.cpp -o example/test/main ./src/*.cpp -I ./src/

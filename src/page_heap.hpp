@@ -66,6 +66,7 @@ public:
 
     void Delete(Span* span) {
         std::lock_guard<std::mutex> guard(lock);
+        span->size_class = 0;
         MergeIntoFreeList(span);
     }
 
