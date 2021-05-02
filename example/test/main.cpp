@@ -1,9 +1,6 @@
 #include <new>
 #include <cstdlib>
 #include <bits/stdc++.h>
-#include <unistd.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
 #include "fixed_allocator.hpp"
 #include "page_map.hpp"
 #include "span.hpp"
