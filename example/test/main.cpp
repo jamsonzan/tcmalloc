@@ -257,6 +257,40 @@ void TestThreadCache() {
             curr->Free(void0, 2);
             curr->Free(void1, 2);
             assert(curr->GetTotalAlloc() == 40 && curr->GetTotalFree() == 40);
+
+            for (int i = 0; i < 10; ++i) {
+                int alloc = (rand() % (1024*1024)) + 1;
+                std::vector<void*> ptrs;
+                std::vector<int> cls;
+                ptrs.resize(alloc);
+                cls.resize(alloc);
+                for (int j = 0; j < alloc; ++j) {
+                    int size = (rand() % 50) + 1;
+                    int cl;
+                    assert(tcmalloc::SizeToClass(size, &cl));
+                    cls[j] = cl;
+                    ptrs[j] = curr->Alloc(size, cl);
+                    // check mem
+                    int* ptr = reinterpret_cast<int*>((ptrs[j])); *ptr = 5;
+                    assert(curr->GetTotalAlloc() > curr->GetTotalFree());
+                    int extra = (rand() % 10);
+                    if (extra < 2) {
+                        void *ptr = curr->Alloc(size, cl);
+                        curr->Free(ptr, cl);
+                    }
+                }
+                for (int j = 0; j < alloc; ++j) {
+                    int pos = (rand() % (alloc-j));
+                    std::swap(ptrs[j], ptrs[pos]);
+                    std::swap(cls[j], cls[pos]);
+                }
+                for (int j = 0; j < alloc; ++j) {
+                    curr->Free(ptrs[j], cls[j]);
+                }
+                assert(curr->GetTotalAlloc() == curr->GetTotalFree());
+                std::this_thread::sleep_for(std::chrono::milliseconds (100));
+            }
+
         });
     }
     for (auto it = threads.begin(); it != threads.end(); ++it) {
@@ -275,4 +309,3 @@ int main()
     TestCentralFreeList();
     TestThreadCache();
 }
-

@@ -13,6 +13,12 @@ namespace tcmalloc {
 
     void free(void* ptr);
 
+    void clear_current_cache();
+
+    size_t current_used_size();
+
+    void set_overall_thread_cache_size(size_t new_size);
+
 }
 
 #endif //TCMALLOC_TCMALLOC_H
