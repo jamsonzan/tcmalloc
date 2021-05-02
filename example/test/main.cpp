@@ -268,18 +268,13 @@ void TestThreadCache() {
                     cls[j] = cl;
                     ptrs[j] = curr->Alloc(size, cl);
                     // check mem
-                    int* ptr = reinterpret_cast<int*>((ptrs[j])); *ptr = 5;
+                    memset(ptrs[j], 1, size);
                     assert(curr->GetTotalAlloc() > curr->GetTotalFree());
                     int extra = (rand() % 10);
                     if (extra < 2) {
                         void *ptr = curr->Alloc(size, cl);
                         curr->Free(ptr, cl);
                     }
-                }
-                for (int j = 0; j < alloc; ++j) {
-                    int pos = (rand() % (alloc-j));
-                    std::swap(ptrs[j], ptrs[pos]);
-                    std::swap(cls[j], cls[pos]);
                 }
                 for (int j = 0; j < alloc; ++j) {
                     curr->Free(ptrs[j], cls[j]);
