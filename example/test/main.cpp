@@ -259,7 +259,7 @@ void TestThreadCache() {
             assert(curr->GetTotalAlloc() == 40 && curr->GetTotalFree() == 40);
 
             for (int i = 0; i < 10; ++i) {
-                int alloc = (rand() % (1024*1024)) + 1;
+                int alloc = (rand() % (1024*100)) + 1;
                 std::vector<void*> ptrs;
                 std::vector<int> cls;
                 ptrs.resize(alloc);
